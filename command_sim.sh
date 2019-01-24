@@ -10,4 +10,4 @@ python example/PDTB_Bert.py \
   --train_batch_size 32 \
   --learning_rate 2e-5 \
   --num_train_epochs 3.0 \
-  --output_dir=models/sim_model/
+  --output_dir models/sim_model/
