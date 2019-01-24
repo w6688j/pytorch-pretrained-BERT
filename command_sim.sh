@@ -1,5 +1,5 @@
 #!/bin/sh
-python example/PDTB_Bert.py \
+python examples/PDTB_Bert.py \
   --task_name sim \
   --do_train \
   --do_eval \
