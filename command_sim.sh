@@ -4,7 +4,7 @@ python example/PDTB_Bert.py \
   --do_train \
   --do_eval \
   --do_lower_case \
-  --data_dir data \
+  --data_dir data/ \
   --bert_model bert-base-uncased \
   --max_seq_length 128 \
   --train_batch_size 32 \
