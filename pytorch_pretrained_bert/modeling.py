@@ -37,7 +37,7 @@ from .file_utils import cached_path
 logger = logging.getLogger(__name__)
 
 PRETRAINED_MODEL_ARCHIVE_MAP = {
-    'bert-base-uncased': "47.254.44.6/bert-base-uncased.tar.gz",
+    'bert-base-uncased': "http://47.254.44.6/bert-base-uncased.tar.gz",
     'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased.tar.gz",
     'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased.tar.gz",
     'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased.tar.gz",
@@ -47,6 +47,7 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
 }
 CONFIG_NAME = 'bert_config.json'
 WEIGHTS_NAME = 'pytorch_model.bin'
+
 
 def gelu(x):
     """Implementation of the gelu activation function.
@@ -66,6 +67,7 @@ ACT2FN = {"gelu": gelu, "relu": torch.nn.functional.relu, "swish": swish}
 class BertConfig(object):
     """Configuration class to store the configuration of a `BertModel`.
     """
+
     def __init__(self,
                  vocab_size_or_config_json_file,
                  hidden_size=768,
@@ -150,10 +152,13 @@ class BertConfig(object):
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
+
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
 except ImportError:
     print("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex.")
+
+
     class BertLayerNorm(nn.Module):
         def __init__(self, hidden_size, eps=1e-12):
             """Construct a layernorm module in the TF style (epsilon inside the square root).
@@ -169,9 +174,11 @@ except ImportError:
             x = (x - u) / torch.sqrt(s + self.variance_epsilon)
             return self.weight * x + self.bias
 
+
 class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings.
     """
+
     def __init__(self, config):
         super(BertEmbeddings, self).__init__()
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
@@ -420,6 +427,7 @@ class PreTrainedBertModel(nn.Module):
     """ An abstract class to handle weights initialization and
         a simple interface for dowloading and loading pretrained models.
     """
+
     def __init__(self, config, *inputs, **kwargs):
         super(PreTrainedBertModel, self).__init__()
         if not isinstance(config, BertConfig):
@@ -540,6 +548,7 @@ class PreTrainedBertModel(nn.Module):
             for name, child in module._modules.items():
                 if child is not None:
                     load(child, prefix + name + '.')
+
         load(model, prefix='' if hasattr(model, 'bert') else 'bert.')
         if len(missing_keys) > 0:
             logger.info("Weights of {} not initialized from pretrained model: {}".format(
@@ -597,6 +606,7 @@ class BertModel(PreTrainedBertModel):
     all_encoder_layers, pooled_output = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config):
         super(BertModel, self).__init__(config)
         self.embeddings = BertEmbeddings(config)
@@ -622,7 +632,7 @@ class BertModel(PreTrainedBertModel):
         # positions we want to attend and -10000.0 for masked positions.
         # Since we are adding it to the raw scores before the softmax, this is
         # effectively the same as removing these entirely.
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
+        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         embedding_output = self.embeddings(input_ids, token_type_ids)
@@ -686,13 +696,15 @@ class BertForPreTraining(PreTrainedBertModel):
     masked_lm_logits_scores, seq_relationship_logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config):
         super(BertForPreTraining, self).__init__(config)
         self.bert = BertModel(config)
         self.cls = BertPreTrainingHeads(config, self.bert.embeddings.word_embeddings.weight)
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None, masked_lm_labels=None, next_sentence_label=None):
+    def forward(self, input_ids, token_type_ids=None, attention_mask=None, masked_lm_labels=None,
+                next_sentence_label=None):
         sequence_output, pooled_output = self.bert(input_ids, token_type_ids, attention_mask,
                                                    output_all_encoded_layers=False)
         prediction_scores, seq_relationship_score = self.cls(sequence_output, pooled_output)
@@ -749,6 +761,7 @@ class BertForMaskedLM(PreTrainedBertModel):
     masked_lm_logits_scores = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config):
         super(BertForMaskedLM, self).__init__(config)
         self.bert = BertModel(config)
@@ -811,6 +824,7 @@ class BertForNextSentencePrediction(PreTrainedBertModel):
     seq_relationship_logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config):
         super(BertForNextSentencePrediction, self).__init__(config)
         self.bert = BertModel(config)
@@ -820,7 +834,7 @@ class BertForNextSentencePrediction(PreTrainedBertModel):
     def forward(self, input_ids, token_type_ids=None, attention_mask=None, next_sentence_label=None):
         _, pooled_output = self.bert(input_ids, token_type_ids, attention_mask,
                                      output_all_encoded_layers=False)
-        seq_relationship_score = self.cls( pooled_output)
+        seq_relationship_score = self.cls(pooled_output)
 
         if next_sentence_label is not None:
             loss_fct = CrossEntropyLoss(ignore_index=-1)
@@ -875,6 +889,7 @@ class BertForSequenceClassification(PreTrainedBertModel):
     logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config, num_labels=2):
         super(BertForSequenceClassification, self).__init__(config)
         self.num_labels = num_labels
@@ -940,6 +955,7 @@ class BertForMultipleChoice(PreTrainedBertModel):
     logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config, num_choices=2):
         super(BertForMultipleChoice, self).__init__(config)
         self.num_choices = num_choices
@@ -952,7 +968,8 @@ class BertForMultipleChoice(PreTrainedBertModel):
         flat_input_ids = input_ids.view(-1, input_ids.size(-1))
         flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1))
         flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1))
-        _, pooled_output = self.bert(flat_input_ids, flat_token_type_ids, flat_attention_mask, output_all_encoded_layers=False)
+        _, pooled_output = self.bert(flat_input_ids, flat_token_type_ids, flat_attention_mask,
+                                     output_all_encoded_layers=False)
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         reshaped_logits = logits.view(-1, self.num_choices)
@@ -1010,6 +1027,7 @@ class BertForTokenClassification(PreTrainedBertModel):
     logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config, num_labels=2):
         super(BertForTokenClassification, self).__init__(config)
         self.num_labels = num_labels
@@ -1078,6 +1096,7 @@ class BertForQuestionAnswering(PreTrainedBertModel):
     start_logits, end_logits = model(input_ids, token_type_ids, input_mask)
     ```
     """
+
     def __init__(self, config):
         super(BertForQuestionAnswering, self).__init__(config)
         self.bert = BertModel(config)
